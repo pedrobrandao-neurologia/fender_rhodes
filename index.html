@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0e0d0c">
+<meta name="description" content="Emulador de piano elétrico Fender Rhodes Suitcase 73 no navegador — síntese FM com Web Audio API, vibrato estéreo, presets, MIDI e gravação.">
 <title>Suitcase 73 · Piano Elétrico</title>
 <style>
   :root{
@@ -96,6 +97,14 @@
     border:1px solid #000;
     box-shadow:0 2px 4px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.25);
   }
+  .ctl select{
+    font:600 10px/1.2 -apple-system,"Helvetica Neue",Arial,sans-serif;
+    letter-spacing:.5px;
+    color:#e8e8e8;
+    background:linear-gradient(180deg,#3c3e41,#1c1d1f);
+    border:1px solid #0a0a0a;border-radius:6px;
+    padding:6px 4px;max-width:112px;
+  }
   .btn{
     font:600 10.5px/1 inherit;letter-spacing:1.3px;text-transform:uppercase;
     color:#e8e8e8;
@@ -110,6 +119,31 @@
     color:#1a1204;
     background:linear-gradient(180deg,#f2bd60,var(--amber));
     box-shadow:0 0 10px rgba(224,161,60,.7), inset 0 1px 0 rgba(255,255,255,.4);
+  }
+  .btn.rec{
+    color:#fff;
+    background:linear-gradient(180deg,#d84a3a,#8c2418);
+    box-shadow:0 0 10px rgba(224,70,50,.75), inset 0 1px 0 rgba(255,255,255,.25);
+    animation:recblink 1.1s ease-in-out infinite;
+  }
+  @keyframes recblink{
+    50%{box-shadow:0 0 3px rgba(224,70,50,.3), inset 0 1px 0 rgba(255,255,255,.25);}
+  }
+  #midiLed{
+    display:none;align-items:center;gap:5px;
+    font:600 9px/1 -apple-system,Arial,sans-serif;
+    letter-spacing:1.2px;color:#2a2c2f;
+  }
+  #midiLed.avail{display:flex;}
+  #midiLed::before{
+    content:"";width:9px;height:9px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#6b4a44,#3c211d);
+    border:1px solid #0a0a0a;
+    box-shadow:inset 0 1px 1px rgba(255,255,255,.15);
+  }
+  #midiLed.on::before{
+    background:radial-gradient(circle at 35% 30%,#ff9d6b,#e0483c);
+    box-shadow:0 0 8px rgba(224,72,60,.8);
   }
   #octLabel{
     font:700 12px/1 "Menlo",monospace;color:#1d1e20;
@@ -155,6 +189,12 @@
     box-shadow:0 2px 3px rgba(0,0,0,.6), inset 0 6px 10px rgba(0,0,0,.7);
     transform:translateY(2px);
   }
+  .khint{
+    position:absolute;left:0;right:0;bottom:26px;
+    text-align:center;font-size:9px;font-weight:700;
+    letter-spacing:.5px;color:#c0b38f;pointer-events:none;
+  }
+  .bkey .khint{color:#8b8b8b;bottom:10px;}
 
   /* ---------- Gabinete/grille do Suitcase ---------- */
   #cab{
@@ -184,6 +224,33 @@
   #splash h1 span{display:block;font-size:.45em;}
   #splash p{font-size:14px;color:#b7b0a0;max-width:440px;line-height:1.5;}
   #startBtn{font-size:15px;padding:16px 34px;border-radius:10px;}
+
+  /* ---------- Ajuda ---------- */
+  #help{
+    position:fixed;inset:0;z-index:60;
+    background:rgba(8,8,8,.9);
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  #help[hidden]{display:none;}
+  #helpCard{
+    background:linear-gradient(180deg,#26272a,#151618);
+    border:1px solid #000;border-radius:12px;
+    color:#e6e0d2;max-width:540px;max-height:85vh;overflow:auto;
+    padding:22px 26px;box-shadow:0 10px 40px rgba(0,0,0,.8);
+    -webkit-overflow-scrolling:touch;
+  }
+  #helpCard h2{font-size:17px;margin-bottom:10px;color:var(--amber);}
+  #helpCard h3{
+    font-size:12px;margin:14px 0 5px;
+    letter-spacing:1.2px;text-transform:uppercase;color:#b7b0a0;
+  }
+  #helpCard p,#helpCard li{font-size:13px;line-height:1.55;}
+  #helpCard ul{padding-left:18px;}
+  #helpCard kbd{
+    font:600 11px "Menlo",monospace;background:#0c0c0c;border:1px solid #3a3a3a;
+    border-radius:4px;padding:1px 5px;color:#f2ead8;
+  }
+  #helpCard .btn{margin-top:16px;}
 </style>
 </head>
 <body>
@@ -198,34 +265,48 @@
     </div>
 
     <div class="ctl">
-      <input type="range" id="volume" min="0" max="1" step="0.01" value="0.8">
+      <input type="range" id="volume" min="0" max="1" step="0.01" value="0.8" title="Volume geral">
       <label>Volume</label>
     </div>
     <div class="ctl">
-      <input type="range" id="tremRate" min="0.5" max="9" step="0.1" value="4.2">
+      <input type="range" id="tremRate" min="0.5" max="9" step="0.1" value="4.2" title="Velocidade do vibrato estéreo">
       <label>Vibrato veloc.</label>
     </div>
     <div class="ctl">
-      <input type="range" id="tremDepth" min="0" max="1" step="0.01" value="0.55">
+      <input type="range" id="tremDepth" min="0" max="1" step="0.01" value="0.55" title="Intensidade do vibrato estéreo">
       <label>Vibrato intens.</label>
     </div>
     <div class="ctl">
-      <input type="range" id="tone" min="0" max="1" step="0.01" value="0.45">
+      <input type="range" id="tone" min="0" max="1" step="0.01" value="0.45" title="Timbre: de suave a agressivo (bark)">
       <label>Timbre (bark)</label>
     </div>
     <div class="ctl">
-      <input type="range" id="chorus" min="0" max="1" step="0.01" value="0.18">
+      <input type="range" id="chorus" min="0" max="1" step="0.01" value="0.18" title="Quantidade de chorus">
       <label>Chorus</label>
     </div>
     <div class="ctl">
-      <input type="range" id="reverb" min="0" max="1" step="0.01" value="0.22">
+      <input type="range" id="reverb" min="0" max="1" step="0.01" value="0.22" title="Quantidade de reverb">
       <label>Reverb</label>
     </div>
+    <div class="ctl">
+      <select id="preset" title="Presets de timbre">
+        <option value="" selected>Manual</option>
+        <option value="getback">Get Back ’69</option>
+        <option value="balada">Balada Suave</option>
+        <option value="funk">Funk Setentão</option>
+        <option value="sonho">Sonho Estéreo</option>
+      </select>
+      <label>Preset</label>
+    </div>
 
-    <button class="btn" id="octDown">Oct −</button>
+    <button class="btn" id="octDown" title="Oitava abaixo (Z)">Oct −</button>
     <span id="octLabel">C3–C5</span>
-    <button class="btn" id="octUp">Oct +</button>
-    <button class="btn" id="sustain">Sustain</button>
+    <button class="btn" id="octUp" title="Oitava acima (X)">Oct +</button>
+    <button class="btn" id="sustain" title="Pedal de sustain — segure Espaço para usar como pedal">Sustain</button>
+    <button class="btn" id="demoBtn" title="Toca uma demonstração">▶ Demo</button>
+    <button class="btn" id="recBtn" title="Grava o áudio e baixa o arquivo ao parar">● Rec</button>
+    <span id="midiLed" title="Conecte um teclado MIDI (Chrome/Edge)">MIDI</span>
+    <button class="btn" id="helpBtn" title="Ajuda e atalhos">?</button>
     <button class="btn" id="power">Tela cheia</button>
   </div>
 
@@ -234,12 +315,43 @@
   <div id="cab"></div>
 </div>
 
+<div id="help" hidden>
+  <div id="helpCard">
+    <h2>Como tocar o Suitcase 73</h2>
+    <h3>No toque (celular e tablet)</h3>
+    <ul>
+      <li>Toque mais perto da <strong>borda de baixo</strong> da tecla para notas mais fortes (sensibilidade de dinâmica).</li>
+      <li><strong>Deslize</strong> o dedo pelas teclas para fazer glissando.</li>
+      <li>Use <strong>vários dedos</strong> ao mesmo tempo para tocar acordes.</li>
+    </ul>
+    <h3>No teclado do computador</h3>
+    <ul>
+      <li><kbd>A</kbd>–<kbd>;</kbd> tocam as notas (fileira de cima = teclas pretas), como um teclado de piano.</li>
+      <li><kbd>Z</kbd> / <kbd>X</kbd> descem e sobem uma oitava.</li>
+      <li><kbd>Espaço</kbd> funciona como <strong>pedal de sustain</strong>: segure para sustentar, solte para abafar.</li>
+    </ul>
+    <h3>Controles</h3>
+    <ul>
+      <li><strong>Presets</strong> ajustam todos os controles de uma vez — experimente cada um!</li>
+      <li><strong>Vibrato</strong> é o balanço estéreo entre os alto-falantes do gabinete Suitcase (use fones!).</li>
+      <li><strong>Timbre (bark)</strong> vai do som suave e escuro ao ataque metálico agressivo.</li>
+      <li><strong>● Rec</strong> grava o que você toca; ao parar, baixa o arquivo de áudio.</li>
+      <li>Suas configurações são salvas automaticamente no navegador.</li>
+    </ul>
+    <h3>MIDI</h3>
+    <p>Conecte um teclado MIDI (USB ou Bluetooth) e toque com dinâmica real — a luz <strong>MIDI</strong> acende quando um dispositivo é detectado. O pedal de sustain do teclado também funciona. Disponível no Chrome e Edge.</p>
+    <button class="btn" id="helpClose">Fechar</button>
+  </div>
+</div>
+
 <div id="splash">
   <h1><span>Fender</span>Rhodes</h1>
   <p>Suitcase Seventy Three — o piano elétrico das sessões de <em>Get Back</em> (1969).
   Toque mais perto da borda inferior da tecla para notas mais fortes.
   O vibrato estéreo balança o som entre os dois alto-falantes, como no gabinete original.
-  Use fones ou caixas estéreo para o efeito completo.</p>
+  Use fones ou caixas estéreo para o efeito completo.
+  No computador: teclas <strong>A–;</strong> tocam notas, <strong>Z/X</strong> mudam a oitava
+  e <strong>Espaço</strong> é o pedal de sustain.</p>
   <button class="btn" id="startBtn">Ligar</button>
 </div>
 
@@ -262,6 +374,71 @@ const freqOf=m=>440*Math.pow(2,(m-69)/12);
 
 const params={volume:0.8,tremRate:4.2,tremDepth:0.55,tone:0.45,
               chorus:0.18,reverb:0.22,sustain:false};
+
+/* Sustain pode vir do botão (trava), da barra de espaço (pedal)
+   ou do pedal MIDI CC64 — qualquer um ativo mantém as notas */
+let sustainLatched=false, spaceHeld=false, midiPedal=false;
+function refreshSustain(){
+  const was=params.sustain;
+  params.sustain=sustainLatched||spaceHeld||midiPedal;
+  document.getElementById("sustain").classList.toggle("on",params.sustain);
+  if(was&&!params.sustain) releaseSustained();
+}
+
+/* ---------------- Presets ---------------- */
+const PRESETS={
+  getback:{tremRate:4.2,tremDepth:0.55,tone:0.45,chorus:0.18,reverb:0.22},
+  balada: {tremRate:0.8,tremDepth:0.25,tone:0.22,chorus:0.55,reverb:0.55},
+  funk:   {tremRate:6.5,tremDepth:0.70,tone:0.85,chorus:0.08,reverb:0.10},
+  sonho:  {tremRate:2.2,tremDepth:0.90,tone:0.35,chorus:0.85,reverb:0.70},
+};
+function applyPreset(id){
+  const p=PRESETS[id];
+  if(!p) return;
+  Object.assign(params,p);
+  setSlidersFromParams();
+  syncAudio();
+  saveState();
+}
+function setSlidersFromParams(){
+  ["volume","tremRate","tremDepth","tone","chorus","reverb"].forEach(k=>{
+    document.getElementById(k).value=params[k];
+  });
+}
+function syncAudio(){
+  if(!ctx) return;
+  const t=ctx.currentTime;
+  master.gain.setTargetAtTime(params.volume,t,.02);
+  vibLFO.frequency.setTargetAtTime(params.tremRate,t,.05);
+  setVibDepth(params.tremDepth);
+  chorusWet.gain.setTargetAtTime(params.chorus*0.8,t,.05);
+  reverbWet.gain.setTargetAtTime(params.reverb*0.9,t,.05);
+}
+
+/* ---------------- Persistência ---------------- */
+const STORE="suitcase73";
+function saveState(){
+  try{
+    localStorage.setItem(STORE,JSON.stringify({
+      volume:params.volume,tremRate:params.tremRate,tremDepth:params.tremDepth,
+      tone:params.tone,chorus:params.chorus,reverb:params.reverb,baseMidi
+    }));
+  }catch(e){}
+}
+function loadState(){
+  try{
+    const s=JSON.parse(localStorage.getItem(STORE));
+    if(!s) return;
+    const num=(v,lo,hi,fb)=>(typeof v==="number"&&isFinite(v))?Math.min(hi,Math.max(lo,v)):fb;
+    params.volume   =num(s.volume,0,1,params.volume);
+    params.tremRate =num(s.tremRate,0.5,9,params.tremRate);
+    params.tremDepth=num(s.tremDepth,0,1,params.tremDepth);
+    params.tone     =num(s.tone,0,1,params.tone);
+    params.chorus   =num(s.chorus,0,1,params.chorus);
+    params.reverb   =num(s.reverb,0,1,params.reverb);
+    baseMidi        =num(s.baseMidi,24,72,baseMidi);
+  }catch(e){}
+}
 
 /* IR sintética para o convolver: sala pequena/spring-like, ~1.9 s */
 function makeImpulse(seconds=1.9, decay=2.6){
@@ -405,6 +582,11 @@ const MIN_WHITE_PX=52;
 let baseMidi=48;
 let keys=[];
 
+/* Dicas das teclas do computador sobre as teclas do piano
+   (só onde há mouse/teclado físico) */
+const HINTS=["A","W","S","E","D","F","T","G","Y","H","U","J","K","O","L","P",";"];
+const showHints=window.matchMedia&&window.matchMedia("(pointer:fine)").matches;
+
 function buildKeyboard(){
   kb.innerHTML="";keys=[];
   const W=kb.clientWidth;
@@ -439,6 +621,16 @@ function buildKeyboard(){
     frag.appendChild(el);
     keys.push({midi:m,el,black:true,x:bx,w:bw});
   }
+  if(showHints){
+    keys.forEach(k=>{
+      const off=k.midi-baseMidi;
+      if(off>=0&&off<HINTS.length){
+        const h=document.createElement("span");
+        h.className="khint";h.textContent=HINTS[off];
+        k.el.appendChild(h);
+      }
+    });
+  }
   kb.appendChild(frag);
   const lo=keys[0].midi,hi=Math.max(...keys.map(k=>k.midi));
   document.getElementById("octLabel").textContent=
@@ -466,10 +658,18 @@ function velFrom(py,black){
 
 const pointers=new Map();
 function press(k,vel){noteOn(k.midi,vel);k.el.classList.add("down");}
+function pressVisual(midi){
+  const k=keys.find(k=>k.midi===midi);
+  if(k)k.el.classList.add("down");
+}
 function lift(midi){
   noteOff(midi);
   const k=keys.find(k=>k.midi===midi);
   if(k)k.el.classList.remove("down");
+}
+function liftAll(){
+  [...active.keys()].forEach(lift);
+  keys.forEach(k=>k.el.classList.remove("down"));
 }
 kb.addEventListener("pointerdown",e=>{
   e.preventDefault();
@@ -502,33 +702,38 @@ kb.addEventListener("pointerleave",endPtr);
 
 /* ---------------- Controles ---------------- */
 const $=id=>document.getElementById(id);
-$("volume").addEventListener("input",e=>{
-  params.volume=+e.target.value;
+function bindSlider(id,fn){
+  $(id).addEventListener("input",e=>{
+    params[id]=+e.target.value;
+    if(fn)fn();
+    $("preset").value="";
+    saveState();
+  });
+}
+bindSlider("volume",()=>{
   if(master) master.gain.setTargetAtTime(params.volume,ctx.currentTime,.02);
 });
-$("tremRate").addEventListener("input",e=>{
-  params.tremRate=+e.target.value;
+bindSlider("tremRate",()=>{
   if(vibLFO) vibLFO.frequency.setTargetAtTime(params.tremRate,ctx.currentTime,.05);
 });
-$("tremDepth").addEventListener("input",e=>{
-  params.tremDepth=+e.target.value;
+bindSlider("tremDepth",()=>{
   if(vibDepthL) setVibDepth(params.tremDepth);
 });
-$("tone").addEventListener("input",e=>{params.tone=+e.target.value;});
-$("chorus").addEventListener("input",e=>{
-  params.chorus=+e.target.value;
+bindSlider("tone",null);
+bindSlider("chorus",()=>{
   if(chorusWet) chorusWet.gain.setTargetAtTime(params.chorus*0.8,ctx.currentTime,.05);
 });
-$("reverb").addEventListener("input",e=>{
-  params.reverb=+e.target.value;
+bindSlider("reverb",()=>{
   if(reverbWet) reverbWet.gain.setTargetAtTime(params.reverb*0.9,ctx.currentTime,.05);
 });
-$("octDown").addEventListener("click",()=>{baseMidi=Math.max(24,baseMidi-12);buildKeyboard();});
-$("octUp").addEventListener("click",()=>{baseMidi=Math.min(72,baseMidi+12);buildKeyboard();});
-$("sustain").addEventListener("click",e=>{
-  params.sustain=!params.sustain;
-  e.currentTarget.classList.toggle("on",params.sustain);
-  if(!params.sustain) releaseSustained();
+$("preset").addEventListener("change",e=>{
+  if(e.target.value) applyPreset(e.target.value);
+});
+$("octDown").addEventListener("click",()=>{baseMidi=Math.max(24,baseMidi-12);buildKeyboard();saveState();});
+$("octUp").addEventListener("click",()=>{baseMidi=Math.min(72,baseMidi+12);buildKeyboard();saveState();});
+$("sustain").addEventListener("click",()=>{
+  sustainLatched=!sustainLatched;
+  refreshSustain();
 });
 $("power").addEventListener("click",()=>{
   const el=document.documentElement;
@@ -536,33 +741,142 @@ $("power").addEventListener("click",()=>{
     el.requestFullscreen().catch(()=>{});
   }else if(document.exitFullscreen){document.exitFullscreen();}
 });
+$("helpBtn").addEventListener("click",()=>{$("help").hidden=false;});
+$("helpClose").addEventListener("click",()=>{$("help").hidden=true;});
+$("help").addEventListener("click",e=>{if(e.target.id==="help")$("help").hidden=true;});
+
 $("startBtn").addEventListener("click",()=>{
   if(!ctx) initAudio();
   ctx.resume();
   document.getElementById("splash").style.display="none";
   buildKeyboard();
+  initMIDI();
 });
 
 let rt;
 window.addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(buildKeyboard,150);});
 window.addEventListener("orientationchange",()=>setTimeout(buildKeyboard,300));
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden&&ctx){liftAll();releaseSustained();}
+});
 
-/* Teclado físico (testes no desktop) */
-const KMAP={a:0,w:1,s:2,e:3,d:4,f:5,t:6,g:7,y:8,h:9,u:10,j:11,k:12,o:13,l:14,p:15,";":16};
+/* ---------------- Teclado físico ----------------
+   e.code é independente de layout/caps lock: KeyA = tecla física A */
+const KMAP={KeyA:0,KeyW:1,KeyS:2,KeyE:3,KeyD:4,KeyF:5,KeyT:6,KeyG:7,KeyY:8,
+            KeyH:9,KeyU:10,KeyJ:11,KeyK:12,KeyO:13,KeyL:14,KeyP:15,Semicolon:16};
 document.addEventListener("keydown",e=>{
   if(e.repeat) return;
-  const off=KMAP[e.key];
+  if(e.code==="Space"){
+    e.preventDefault();
+    if(!spaceHeld){spaceHeld=true;refreshSustain();}
+    return;
+  }
+  if(e.code==="KeyZ"){baseMidi=Math.max(24,baseMidi-12);buildKeyboard();saveState();return;}
+  if(e.code==="KeyX"){baseMidi=Math.min(72,baseMidi+12);buildKeyboard();saveState();return;}
+  const off=KMAP[e.code];
   if(off===undefined||!ctx) return;
   const midi=baseMidi+off;
   noteOn(midi,0.75);
-  const k=keys.find(k=>k.midi===midi);
-  if(k)k.el.classList.add("down");
+  pressVisual(midi);
 });
 document.addEventListener("keyup",e=>{
-  const off=KMAP[e.key];
+  if(e.code==="Space"){spaceHeld=false;refreshSustain();return;}
+  const off=KMAP[e.code];
   if(off===undefined) return;
   lift(baseMidi+off);
 });
+
+/* ---------------- Web MIDI ---------------- */
+function initMIDI(){
+  if(!navigator.requestMIDIAccess) return;
+  $("midiLed").classList.add("avail");
+  navigator.requestMIDIAccess().then(acc=>{
+    const led=$("midiLed");
+    const hook=()=>{
+      const names=[];
+      acc.inputs.forEach(inp=>{inp.onmidimessage=onMIDI;names.push(inp.name);});
+      led.classList.toggle("on",names.length>0);
+      led.title=names.length?names.join(", "):"Conecte um teclado MIDI (Chrome/Edge)";
+    };
+    acc.onstatechange=hook;
+    hook();
+  }).catch(()=>{});
+}
+function onMIDI(e){
+  const [st,d1,d2]=e.data;
+  const cmd=st&0xf0;
+  if(cmd===0x90&&d2>0){noteOn(d1,d2/127);pressVisual(d1);}
+  else if(cmd===0x80||(cmd===0x90&&d2===0)){lift(d1);}
+  else if(cmd===0xB0&&d1===64){midiPedal=d2>=64;refreshSustain();}
+}
+
+/* ---------------- Gravação ---------------- */
+let recorder=null,recChunks=[],recDest=null;
+$("recBtn").addEventListener("click",()=>{
+  if(!ctx) return;
+  if(recorder&&recorder.state==="recording"){recorder.stop();return;}
+  if(!window.MediaRecorder){alert("Gravação não suportada neste navegador.");return;}
+  if(!recDest) recDest=ctx.createMediaStreamDestination();
+  comp.connect(recDest);
+  const mime=["audio/webm;codecs=opus","audio/webm","audio/mp4"]
+    .find(m=>MediaRecorder.isTypeSupported(m));
+  recorder=new MediaRecorder(recDest.stream,mime?{mimeType:mime}:undefined);
+  recChunks=[];
+  recorder.ondataavailable=e=>{if(e.data.size)recChunks.push(e.data);};
+  recorder.onstop=()=>{
+    try{comp.disconnect(recDest);}catch(e){}
+    const type=recorder.mimeType||"audio/webm";
+    const ext=type.includes("mp4")?"m4a":"webm";
+    const blob=new Blob(recChunks,{type});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download="suitcase73-"+Date.now()+"."+ext;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+    $("recBtn").classList.remove("rec");
+    recorder=null;
+  };
+  recorder.start();
+  $("recBtn").classList.add("rec");
+});
+
+/* ---------------- Demo ----------------
+   Vamp genérico soul/rock em Lá (I–bVII–IV), só para
+   apresentar o timbre — nada de melodias registradas */
+const DEMO_BPM=92;
+const DEMO=[            /* [tempo em beats, notas MIDI, duração, dinâmica] */
+  [0,   [45,61,64,69],1.8,.9],
+  [2,   [45,61,64],   1.2,.6],
+  [3.5, [43,59,62,67],1.3,.8],
+  [5,   [43,59,62],   0.9,.6],
+  [6,   [50,57,62,66],1.8,.85],
+  [8,   [45,61,64,69],1.8,.9],
+  [10,  [64],.45,.7],[10.5,[62],.45,.7],[11,[61],.45,.7],
+  [11.5,[57,61,64],  2.4,.8],
+];
+let demoTimers=[],demoOn=false;
+$("demoBtn").addEventListener("click",()=>{
+  if(demoOn){stopDemo();return;}
+  if(!ctx) return;
+  demoOn=true;$("demoBtn").classList.add("on");
+  const spb=60/DEMO_BPM*1000;
+  let end=0;
+  DEMO.forEach(([b,notes,dur,vel])=>{
+    demoTimers.push(setTimeout(()=>notes.forEach(m=>{noteOn(m,vel);pressVisual(m);}),b*spb));
+    demoTimers.push(setTimeout(()=>notes.forEach(m=>lift(m)),(b+dur)*spb));
+    end=Math.max(end,(b+dur)*spb);
+  });
+  demoTimers.push(setTimeout(stopDemo,end+250));
+});
+function stopDemo(){
+  demoTimers.forEach(clearTimeout);demoTimers=[];
+  liftAll();
+  demoOn=false;$("demoBtn").classList.remove("on");
+}
+
+/* ---------------- Boot ---------------- */
+loadState();
+setSlidersFromParams();
 </script>
 </body>
 </html>
