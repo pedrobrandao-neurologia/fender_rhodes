@@ -189,6 +189,14 @@
     box-shadow:0 2px 3px rgba(0,0,0,.6), inset 0 6px 10px rgba(0,0,0,.7);
     transform:translateY(2px);
   }
+  /* pulso visual do marimba repeat (módulo Lowrey) */
+  .wkey.pulse{
+    background:linear-gradient(180deg,#fff3d4 0%,#f7e7bd 60%,#e8d8a8 100%);
+    box-shadow:inset 0 0 12px rgba(224,161,60,.55), 2px 0 3px rgba(0,0,0,.18);
+  }
+  .bkey.pulse{
+    box-shadow:0 0 12px rgba(224,161,60,.85), 0 5px 7px rgba(0,0,0,.65);
+  }
   .khint{
     position:absolute;left:0;right:0;bottom:26px;
     text-align:center;font-size:9px;font-weight:700;
@@ -265,6 +273,13 @@
     </div>
 
     <div class="ctl">
+      <select id="voice" title="Instrumento emulado">
+        <option value="rhodes" selected>Rhodes 73</option>
+        <option value="lowrey">Lowrey ’68 · Baba O’Riley</option>
+      </select>
+      <label>Instrumento</label>
+    </div>
+    <div class="ctl">
       <input type="range" id="volume" min="0" max="1" step="0.01" value="0.8" title="Volume geral">
       <label>Volume</label>
     </div>
@@ -297,6 +312,10 @@
         <option value="sonho">Sonho Estéreo</option>
       </select>
       <label>Preset</label>
+    </div>
+    <div class="ctl" id="repCtl" style="display:none">
+      <input type="range" id="repRate" min="2" max="6" step="0.05" value="3.9" title="Velocidade do marimba repeat (repetições por segundo de cada grupo)">
+      <label>Repeat (marimba)</label>
     </div>
 
     <button class="btn" id="octDown" title="Oitava abaixo (Z)">Oct −</button>
@@ -338,6 +357,17 @@
       <li><strong>● Rec</strong> grava o que você toca; ao parar, baixa o arquivo de áudio.</li>
       <li>Suas configurações são salvas automaticamente no navegador.</li>
     </ul>
+    <h3>Módulo Lowrey — Baba O’Riley</h3>
+    <p>Em <strong>Instrumento → Lowrey ’68</strong> o piano vira o órgão
+    <strong>Lowrey Berkshire Deluxe TBO-1</strong> com <em>marimba repeat</em> — o
+    equipamento real do intro de <em>Baba O’Riley</em> (The Who, 1971). Como no
+    original, as notas <strong>F–G e B–C#</strong> repetem <strong>no tempo</strong> e
+    <strong>G#–A# e D–E</strong> repetem no <strong>contratempo</strong>: segure um
+    acorde e o padrão entrelaçado surge sozinho. Ligue o <strong>Sustain</strong>
+    (ou segure <kbd>Espaço</kbd>) para deixar o padrão rodando e solar por cima.
+    O controle <strong>Repeat</strong> ajusta a velocidade das repetições e o
+    <strong>Timbre</strong> abre o filtro, como o sintetizador EMS VCS3 usado na
+    gravação.</p>
     <h3>MIDI</h3>
     <p>Conecte um teclado MIDI (USB ou Bluetooth) e toque com dinâmica real — a luz <strong>MIDI</strong> acende quando um dispositivo é detectado. O pedal de sustain do teclado também funciona. Disponível no Chrome e Edge.</p>
     <button class="btn" id="helpClose">Fechar</button>
@@ -351,7 +381,9 @@
   O vibrato estéreo balança o som entre os dois alto-falantes, como no gabinete original.
   Use fones ou caixas estéreo para o efeito completo.
   No computador: teclas <strong>A–;</strong> tocam notas, <strong>Z/X</strong> mudam a oitava
-  e <strong>Espaço</strong> é o pedal de sustain.</p>
+  e <strong>Espaço</strong> é o pedal de sustain.
+  Novo: mude o <strong>Instrumento</strong> para <strong>Lowrey ’68</strong> e
+  toque o som do intro de <em>Baba O’Riley</em>.</p>
   <button class="btn" id="startBtn">Ligar</button>
 </div>
 
@@ -373,7 +405,7 @@ const isBlack=n=>[1,3,6,8,10].includes(n%12);
 const freqOf=m=>440*Math.pow(2,(m-69)/12);
 
 const params={volume:0.8,tremRate:4.2,tremDepth:0.55,tone:0.45,
-              chorus:0.18,reverb:0.22,sustain:false};
+              chorus:0.18,reverb:0.22,repRate:3.9,sustain:false};
 
 /* Sustain pode vir do botão (trava), da barra de espaço (pedal)
    ou do pedal MIDI CC64 — qualquer um ativo mantém as notas */
@@ -401,7 +433,7 @@ function applyPreset(id){
   saveState();
 }
 function setSlidersFromParams(){
-  ["volume","tremRate","tremDepth","tone","chorus","reverb"].forEach(k=>{
+  ["volume","tremRate","tremDepth","tone","chorus","reverb","repRate"].forEach(k=>{
     document.getElementById(k).value=params[k];
   });
 }
@@ -421,7 +453,8 @@ function saveState(){
   try{
     localStorage.setItem(STORE,JSON.stringify({
       volume:params.volume,tremRate:params.tremRate,tremDepth:params.tremDepth,
-      tone:params.tone,chorus:params.chorus,reverb:params.reverb,baseMidi
+      tone:params.tone,chorus:params.chorus,reverb:params.reverb,
+      repRate:params.repRate,voice:voiceMode,baseMidi
     }));
   }catch(e){}
 }
@@ -436,7 +469,9 @@ function loadState(){
     params.tone     =num(s.tone,0,1,params.tone);
     params.chorus   =num(s.chorus,0,1,params.chorus);
     params.reverb   =num(s.reverb,0,1,params.reverb);
+    params.repRate  =num(s.repRate,2,6,params.repRate);
     baseMidi        =num(s.baseMidi,24,72,baseMidi);
+    if(s.voice==="lowrey"||s.voice==="rhodes") voiceMode=s.voice;
   }catch(e){}
 }
 
@@ -520,6 +555,7 @@ const sustained=new Set();
 function noteOn(midi,vel){
   if(!ctx) return;
   if(ctx.state==="suspended") ctx.resume();
+  if(voiceMode==="lowrey"){lowreyNoteOn(midi,Math.max(.08,Math.min(1,vel)));return;}
   noteOff(midi,true);
 
   const t=ctx.currentTime;
@@ -560,6 +596,7 @@ function noteOn(midi,vel){
 }
 
 function noteOff(midi,force=false){
+  if(voiceMode==="lowrey"){lowreyNoteOff(midi,force);return;}
   const v=active.get(midi);
   if(!v) return;
   if(params.sustain&&!force){sustained.add(v);active.delete(midi);return;}
@@ -574,7 +611,79 @@ function releaseVoice(v){
   v.car.stop(stop);v.mod.stop(stop);v.tine.stop(stop);
   setTimeout(()=>{try{v.out.disconnect();}catch(e){}},700);
 }
-function releaseSustained(){sustained.forEach(releaseVoice);sustained.clear();}
+function releaseSustained(){
+  sustained.forEach(releaseVoice);sustained.clear();
+  susRep.clear();maybeStopLowrey();
+}
+
+/* ---------------- Módulo Lowrey (Baba O'Riley) ----------------
+   Lowrey Berkshire Deluxe TBO-1 (1968) com "marimba repeat":
+   como no órgão real, as notas F–G e B–C# repetem NO tempo e
+   G#–A# e D–E repetem no CONTRATEMPO — segurar um acorde gera o
+   padrão entrelaçado do intro de Baba O'Riley (The Who, 1971).
+   Cada batida é um golpe percussivo tipo flauta/marimba, passando
+   por um lowpass no papel do EMS VCS3 usado na gravação. */
+let voiceMode="rhodes";
+const heldRep=new Map(), susRep=new Map();   /* midi -> {vel,last} */
+let lowreyTimer=null, lowreyNext=0, lowreyPhase=0;
+const ONBEAT=[5,6,7,11,0,1];                 /* F F# G · B C C#  */
+const lowreyGroup=m=>ONBEAT.includes(m%12)?0:1;
+
+function lowreyStrike(midi,vel,t){
+  const f=freqOf(midi);
+  const out=ctx.createGain();
+  out.gain.setValueAtTime(0,t);
+  out.gain.linearRampToValueAtTime(0.4*vel,t+0.004);
+  out.gain.setTargetAtTime(0.0001,t+0.02,0.09);
+  const lp=ctx.createBiquadFilter();lp.type="lowpass";
+  lp.frequency.value=800+3800*params.tone+900*vel;lp.Q.value=1.1;
+  [[1,1],[2,0.42],[3,0.13],[4,0.07]].forEach(([h,g])=>{
+    const o=ctx.createOscillator();o.type="sine";o.frequency.value=f*h;
+    const og=ctx.createGain();og.gain.value=g;
+    o.connect(og).connect(lp);o.start(t);o.stop(t+0.6);
+  });
+  lp.connect(out).connect(master);
+  setTimeout(()=>{try{out.disconnect();}catch(e){}},(t-ctx.currentTime)*1000+700);
+  const k=keys.find(k=>k.midi===midi);
+  if(k){
+    setTimeout(()=>{
+      k.el.classList.add("pulse");
+      setTimeout(()=>k.el.classList.remove("pulse"),90);
+    },Math.max(0,(t-ctx.currentTime)*1000));
+  }
+}
+function lowreyTick(){
+  const period=1/params.repRate, half=period/2;
+  while(lowreyNext<ctx.currentTime+0.12){
+    const t=lowreyNext, phase=lowreyPhase;
+    const hit=map=>map.forEach((n,m)=>{
+      if(lowreyGroup(m)===phase&&t-n.last>=period*0.45){n.last=t;lowreyStrike(m,n.vel,t);}
+    });
+    hit(heldRep);hit(susRep);
+    lowreyPhase^=1;lowreyNext+=half;
+  }
+}
+function lowreyNoteOn(midi,vel){
+  susRep.delete(midi);
+  heldRep.set(midi,{vel,last:ctx.currentTime});
+  lowreyStrike(midi,vel,ctx.currentTime);
+  if(!lowreyTimer){
+    lowreyPhase=0;lowreyNext=ctx.currentTime+0.03;
+    lowreyTimer=setInterval(lowreyTick,30);
+  }
+}
+function lowreyNoteOff(midi,force){
+  const n=heldRep.get(midi);
+  if(!n){susRep.delete(midi);maybeStopLowrey();return;}
+  heldRep.delete(midi);
+  if(params.sustain&&!force){susRep.set(midi,n);return;}
+  maybeStopLowrey();
+}
+function maybeStopLowrey(){
+  if(heldRep.size===0&&susRep.size===0&&lowreyTimer){
+    clearInterval(lowreyTimer);lowreyTimer=null;
+  }
+}
 
 /* ---------------- Teclado ---------------- */
 const kb=document.getElementById("keyboard");
@@ -669,6 +778,7 @@ function lift(midi){
 }
 function liftAll(){
   [...active.keys()].forEach(lift);
+  heldRep.clear();susRep.clear();maybeStopLowrey();
   keys.forEach(k=>k.el.classList.remove("down"));
 }
 kb.addEventListener("pointerdown",e=>{
@@ -726,9 +836,26 @@ bindSlider("chorus",()=>{
 bindSlider("reverb",()=>{
   if(reverbWet) reverbWet.gain.setTargetAtTime(params.reverb*0.9,ctx.currentTime,.05);
 });
+bindSlider("repRate",null);
 $("preset").addEventListener("change",e=>{
   if(e.target.value) applyPreset(e.target.value);
 });
+function setVoice(v,applyDefaults){
+  if(demoOn) stopDemo();
+  liftAll();releaseSustained();
+  voiceMode=v;
+  $("voice").value=v;
+  $("repCtl").style.display=v==="lowrey"?"":"none";
+  if(applyDefaults){
+    if(v==="lowrey") Object.assign(params,{tremDepth:0,chorus:0.12,reverb:0.3,tone:0.5});
+    else Object.assign(params,PRESETS.getback);
+    setSlidersFromParams();
+    syncAudio();
+    $("preset").value="";
+  }
+  saveState();
+}
+$("voice").addEventListener("change",e=>setVoice(e.target.value,true));
 $("octDown").addEventListener("click",()=>{baseMidi=Math.max(24,baseMidi-12);buildKeyboard();saveState();});
 $("octUp").addEventListener("click",()=>{baseMidi=Math.min(72,baseMidi+12);buildKeyboard();saveState();});
 $("sustain").addEventListener("click",()=>{
@@ -877,6 +1004,8 @@ function stopDemo(){
 /* ---------------- Boot ---------------- */
 loadState();
 setSlidersFromParams();
+$("voice").value=voiceMode;
+$("repCtl").style.display=voiceMode==="lowrey"?"":"none";
 </script>
 </body>
 </html>
