@@ -43,7 +43,7 @@ Em *Settings → Pages*, selecione a branch principal e a pasta raiz (`/`). O pi
 | **Chorus** | Espessamento do som com duas linhas de delay moduladas |
 | **Reverb** | Ambiência de sala pequena, com caráter de spring reverb |
 | **Preset** | Aplica combinações prontas de todos os controles (veja abaixo) |
-| **Repeat (marimba)** | Só no modo Lowrey: velocidade do *marimba repeat* (repetições por segundo de cada grupo) |
+| **Tempo (BPM)** | Só no modo Lowrey: andamento da grade de semicolcheias do *marimba repeat* (padrão 117, como na gravação) |
 | **Sustain** | Trava o pedal de sustain (as notas continuam soando após soltar as teclas) |
 | **▶ Demo** | Toca um vamp de demonstração para você ouvir o timbre |
 | **● Rec** | Grava o que você toca; ao parar, baixa o arquivo de áudio (`.webm`/`.m4a`) |
@@ -91,24 +91,19 @@ Selecione **Instrumento → Lowrey ’68 · Baba O’Riley** e o app deixa de se
 
 O "sintetizador" hipnótico de *Baba O'Riley* (álbum *Who's Next*, 1971) **não é um sintetizador**: é um **órgão doméstico Lowrey Berkshire Deluxe TBO-1 (1968)** tocado por Pete Townshend em seu estúdio caseiro, usando o recurso **"marimba repeat"** do próprio órgão. Townshend chegou a tentar o mesmo resultado com um sequenciador/sintetizador ARP, mas não conseguiu o som que queria — o padrão veio todo do Lowrey. O sinal do órgão ainda passava por um sintetizador **EMS VCS3 mk1**, usado como processador/filtro.
 
-O segredo do padrão entrelaçado é que o *marimba repeat* do Lowrey **não repete todas as notas juntas**:
-
-- As notas **F, F#, G** e **B, C, C#** repetem **no tempo** (*on the beat*);
-- As notas **G#, A, A#** e **D, D#, E** repetem no **contratempo** (*off the beat*).
-
-Ao segurar um acorde com notas dos dois grupos, as repetições se intercalam e o famoso arpejo pulsante "acontece sozinho" — foi exatamente assim que Townshend o criou, segurando acordes em bloco nos dois manuais do órgão.
+Funcionalmente, o *marimba repeat* é um **note-repeater**: um LFO em onda quadrada retriggerando a amplitude — ele "picota" cada nota segurada em subdivisões rápidas de **semicolcheia (1/16)**, no andamento de **~117 BPM** da gravação. E o segredo do padrão entrelaçado **não é um arpejador programado**: a síncope vem do **timing manual** de quando cada nota é pressionada. Cada nota repete na fase em que foi tocada — em *Baba O'Riley*, **F e C caem no tempo forte** e as outras notas no **contratempo**, gerando a alternância rápida F–C–F–C. A tonalidade é **Fá maior**, com a figura básica F–C e o **Bb** aparecendo nos acordes; os floreios mais rápidos chegam a fusas (1/32).
 
 ### Como o módulo emula isso
 
-- **Grupos on-beat/off-beat idênticos aos do órgão real**: um relógio interno dispara o grupo F–G/B–C# no tempo e o grupo G#–A#/D–E deslocado meio período — segure um acorde (ex.: Fá maior) e ouça o padrão se formar;
-- **Timbre percussivo tipo flauta/marimba**: cada batida é sintetizada por 4 parciais harmônicos (1×, 2×, 3×, 4×) com ataque de 4 ms e decaimento curto, o caráter do registro do Lowrey;
+- **Chopper de semicolcheias sincronizado ao toque**: um relógio interno roda a grade de 1/16 no BPM escolhido; a **primeira nota pressionada define o tempo forte** e cada nota seguinte herda a fase do ponto da grade mais próximo do momento em que foi tocada — toque F no tempo e C logo depois (no contratempo) e a figura F–C–F–C surge sozinha, exatamente como no órgão real;
+- **Timbre brilhante e flautado**: cada batida é sintetizada por 4 parciais harmônicos (1×, 2×, 3×, 4×) com ataque de 3 ms e *gate* curto — notas percussivas e distintas, imitando o registro de marimba do Lowrey;
 - **Filtro no papel do EMS VCS3**: o controle **Timbre** abre/fecha um lowpass com leve ressonância, do abafado ao brilhante;
-- **Repeat (marimba)** ajusta a velocidade das repetições — o padrão de fábrica (~3,9 Hz por grupo) corresponde a colcheias no andamento da gravação original (~116 BPM);
-- **Sustain trava o padrão**: com o pedal ativo (botão ou `Espaço`), as notas soltas continuam repetindo — deixe o "loop" rodando e sole por cima, como na música;
-- **Pulso visual**: as teclas piscam em âmbar a cada batida, mostrando o entrelaçamento dos dois grupos;
-- Os efeitos do gabinete (chorus, reverb, vibrato estéreo) continuam disponíveis — ao entrar no modo Lowrey o app aplica um ajuste sóbrio (vibrato desligado, reverb leve), fiel à gravação.
+- **Tempo (BPM)** ajusta o andamento da grade de semicolcheias — o padrão de fábrica é 117 BPM, o andamento da gravação original (~116–119);
+- **Sustain trava o padrão**: com o pedal ativo (botão ou `Espaço`), as notas soltas continuam repetindo na fase original — deixe o "loop" rodando e sole por cima, como na música;
+- **Pulso visual**: as teclas piscam em âmbar a cada batida, mostrando o entrelaçamento tempo/contratempo;
+- Os efeitos do gabinete (chorus, reverb, vibrato estéreo) continuam disponíveis — ao entrar no modo Lowrey o app aplica um ajuste sóbrio (vibrato desligado, reverb leve), fiel à gravação, e o **Demo** passa a demonstrar a técnica do stagger.
 
-> 🎵 **Experimente:** entre no modo Lowrey, ligue o **Sustain**, toque um acorde maior arpejado (fundamental, terça, quinta em oitavas diferentes) e solte — o padrão continua sozinho, no melhor estilo *teenage wasteland*.
+> 🎵 **Receita clássica:** entre no modo Lowrey, ligue o **Sustain**, toque **F** no tempo e **C** logo em seguida (uma semicolcheia depois) e segure — a figura F–C–F–C continua sozinha. Adicione **Bb** nos acordes e improvise floreios em Fá por cima, no melhor estilo *teenage wasteland*.
 
 ### Referências da pesquisa
 
